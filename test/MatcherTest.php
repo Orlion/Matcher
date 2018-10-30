@@ -1,21 +1,22 @@
 <?php
 
+
 namespace Test;
 
-use Orlion\Matcher;
+use Orlion\Matcher\Matcher;
+
+require_once '../vendor/autoload.php';
 
 class MatcherTest
 {
     public static function testTest()
     {
-        $pattern = '/a/';
-        $subject = 'a';
+        $pattern = 'aa+';
+        $subject = 'aa';
         $matcher = new Matcher($pattern);
-        if ($matcher->test($subject) !== preg_match($pattern, $subject))
-        {
-            echo "error";
-        }
+        var_dump($matcher->test($subject));
     }
 }
 
 MatcherTest::testTest();
+

@@ -1,29 +1,20 @@
 <?php
 
-namespace Orlion\Pattern\Nfa;
+namespace Orlion\Matcher\Pattern\Nfa;
 
 
 class Node
 {
-    // 节点没有出去的边
-    const EMPTY = 0;
-    // 节点出去的边是ε
-    const EPSILON = 1;
-    // 节点出去的边是字符集
-    const CHAR_SET = 2;
-
     // 状态
     private $state;
-
     // 下一个节点
-    private $next;
+    private $next1;
     // 下一个节点2
     private $next2;
-
     // 边
-    private $edge;
-
-    private $charSet;
+    private $edge1;
+    // 边2
+    private $edge2;
 
     public function __construct(int $state)
     {
@@ -31,51 +22,51 @@ class Node
     }
 
     /**
-     * @return string | int
+     * @return Edge
      */
-    public function getEdge()
+    public function getEdge1()
     {
-        return $this->edge;
+        return $this->edge1;
     }
 
     /**
-     * @param string | int $edgeType
+     * @param Edge $edge
      */
-    public function setEdge($edge)
+    public function setEdge1(Edge $edge)
     {
-        $this->edge = $edge;
+        $this->edge1 = $edge;
     }
 
     /**
-     * @return array
+     * @return Edge
      */
-    public function getCharSet():array
+    public function getEdge2()
     {
-        return $this->charSet;
+        return $this->edge2;
     }
 
     /**
-     * @param array $charSet
+     * @param Edge $edge
      */
-    public function setCharSet(array $charSet)
+    public function setEdge2(Edge $edge)
     {
-        $this->charSet = $charSet;
+        $this->edge2 = $edge;
     }
 
     /**
      * @return Node
      */
-    public function getNext():Node
+    public function getNext1(): Node
     {
-        return $this->next;
+        return $this->next1;
     }
 
     /**
      * @param Node $next
      */
-    public function setNext(Node $next)
+    public function setNext1(Node $next)
     {
-        $this->next = $next;
+        $this->next1 = $next;
     }
 
     /**

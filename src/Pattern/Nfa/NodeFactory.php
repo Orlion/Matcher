@@ -1,6 +1,6 @@
 <?php
 
-namespace Orlion\Pattern\Nfa;
+namespace Orlion\Matcher\Pattern\Nfa;
 
 
 class NodeFactory
@@ -9,7 +9,7 @@ class NodeFactory
 
     public function __construct()
     {
-        $this->nfaStates = 0;
+        $this->nfaStates = 1;
     }
 
     public function getNode():Node

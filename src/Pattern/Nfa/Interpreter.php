@@ -1,6 +1,6 @@
 <?php
 
-namespace Orlion\Pattern\Nfa;
+namespace Orlion\Matcher\Pattern\Nfa;
 
 
 class Interpreter
@@ -12,57 +12,52 @@ class Interpreter
         $this->nfa = $nfa;
     }
 
-    public function interpret(string $subject):bool
+    public function run(string $subject):bool
     {
-        // 下一个状态集
         $nextNodes = [];
-        $nextNodes[] = $this->nfa->start;
+        $nextNodes[] = $this->nfa->startNode;
 
-        // ε闭包运算
         $nextNodes = $this->closure($nextNodes);
 
-        $lastAccepted = false;
-
-        $subjectLen = strlen($subject);
-        for ($i = 0; $i < $subjectLen; $i++)
-        {
-            $nextNodes = $this->move($subject[$i], $nextNodes);
-            $nextNodes = $this->closure($nextNodes);
-
-            // 进入了接收状态则说明匹配
-            if (in_array($this->nfa->end, $nextNodes))
-            {
-                $lastAccepted = true;
+        $len = strlen($subject);
+        $index = 0;
+        do {
+            $current = $this->move($subject[$index], $nextNodes);
+            $nextNodes = $this->closure($current);
+            if (in_array($this->nfa->endNode, $nextNodes)) {
+                return true;
             }
-        }
+        } while (++$index < $len);
 
-        return $lastAccepted;
+        return false;
     }
 
     /**
      * ε闭包运算
      *
-     * @param array $inputNodes 输入状态
-     * @return array 输出状态
+     * @param array $inputNodes
+     * @return array
      */
     public function closure(array $inputNodes):array
     {
-        $outputNodes = $inputNodes;
-        foreach ($inputNodes as $inputNode)
-        {
-            if (Node::EPSILON === $inputNode->getEdge())
+        $outputNodes = [];
+        foreach ($inputNodes as $inputNode) {
+            $edge1 = $inputNode->getEdge1();
+            if (!is_null($edge1) && $edge1->getType() == Edge::TYPE_EPSILON)
             {
-                $nextNode = $inputNode->getNext();
-                if (null !== $nextNode)
-                {
-                    $outputNodes[] = $nextNode;
-                }
-                $next2Node = $inputNode->getNext2();
-                if (null != $next2Node)
-                {
-                    $outputNodes[] = $next2Node;
-                }
+                $outputNodes[] = $inputNode->getNext1();
             }
+            $edge2 = $inputNode->getEdge2();
+            if (!is_null($edge2) && $edge2->getType() == Edge::TYPE_EPSILON)
+            {
+                $outputNodes[] = $inputNode->getNext2();
+            }
+        }
+
+        if (!empty($outputNodes)) {
+            $outputNodes = array_merge($inputNodes, $this->closure($outputNodes));
+        } else {
+            $outputNodes = $inputNodes;
         }
 
         return $outputNodes;
@@ -71,8 +66,8 @@ class Interpreter
     /**
      * 状态转移
      *
-     * @param string $char      输入的字符
-     * @param array $inputNodes 输入状态
+     * @param string $char
+     * @param array $inputNodes
      * @return array
      */
     public function move(string $char, array $inputNodes):array
@@ -81,8 +76,42 @@ class Interpreter
 
         foreach ($inputNodes as $inputNode)
         {
-            if (null != $inputNode->getNext() && ($char === $inputNode->getEdge() || ($inputNode->getEdge() === Node::CHAR_SET && in_array($char, $inputNode->getCharSet())))) {
-                $outputNodes[] = $inputNode->getNext;
+            $edge1 = $inputNode->getEdge1();
+            if (!is_null($edge1)) {
+                switch ($edge1->getType()) {
+                    case Edge::TYPE_CHARSET:
+                        if (in_array($char, $edge1->getCharSet())) {
+                            $outputNodes[] = $inputNode->getNext1();
+                        }
+                        break;
+                    case Edge::TYPE_CHARSET_NEGATIVE:
+                        if (!in_array($char, $edge1->getCharSet())) {
+                            $outputNodes[] = $inputNode->getNext1();
+                        }
+                        break;
+                    case Edge::TYPE_ANY:
+                        $outputNodes[] = $inputNode->getNext1();
+                        break;
+                }
+            }
+
+            $edge2 = $inputNode->getEdge2();
+            if (!is_null($edge2)) {
+                switch ($edge2->getType()) {
+                    case Edge::TYPE_CHARSET:
+                        if (in_array($char, $edge2->getCharSet())) {
+                            $outputNodes[] = $inputNode->getNext2();
+                        }
+                        break;
+                    case Edge::TYPE_CHARSET_NEGATIVE:
+                        if (!in_array($char, $edge2->getCharSet())) {
+                            $outputNodes[] = $inputNode->getNext2();
+                        }
+                        break;
+                    case Edge::TYPE_ANY:
+                        $outputNodes[] = $inputNode->getNext2();
+                        break;
+                }
             }
         }
 

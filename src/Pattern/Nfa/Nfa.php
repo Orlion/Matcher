@@ -1,14 +1,16 @@
 <?php
 
-namespace Orlion\Pattern\Nfa;
+namespace Orlion\Matcher\Pattern\Nfa;
 
 /**
- * NFA
+ * Class Nfa
  *
- * @package Orlion\Pattern\Nfa
+ * @package Orlion\Matcher\Pattern\Nfa
+ * @property Node $startNode
+ * @property Node $endNode
  */
 class Nfa
 {
-    public $start;
-    public $end;
+    public $startNode;
+    public $endNode;
 }

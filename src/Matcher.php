@@ -1,11 +1,11 @@
 <?php
 
-namespace Orlion;
+namespace Orlion\Matcher;
 
 
-use Orlion\Pattern\Lexer;
-use Orlion\Pattern\Nfa\MachineConstructor;
-use Orlion\Pattern\Nfa\Interpreter;
+use Orlion\Matcher\Pattern\Lexer;
+use Orlion\Matcher\Pattern\Nfa\MachineConstructor;
+use Orlion\Matcher\Pattern\Nfa\Interpreter;
 
 class Matcher
 {
@@ -22,6 +22,6 @@ class Matcher
     public function test(string $subject):bool
     {
         $nfaInterpreter = new Interpreter($this->nfa);
-        return $nfaInterpreter->interpret($subject);
+        return $nfaInterpreter->run($subject);
     }
 }
