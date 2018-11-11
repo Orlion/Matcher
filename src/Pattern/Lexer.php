@@ -13,12 +13,14 @@ class Lexer
     const TOKEN_STAR = 6; // * (匹配前面的子表达式零次或多次)
     const TOKEN_PLUS = 7; // + (匹配前面的子表达式一次或多次)
     const TOKEN_OPTIONAL = 8; // ? (匹配前面的子表达式零次或一次)
+    const TOKEN_OR = 9; // | 或者
 
     private $input;
     private $inputLen;
     private $index = -1;
     private $currentToken;
     private $currentLexeme;
+    private $isEnd = false;
 
     public function __construct(string $input)
     {
@@ -36,6 +38,7 @@ class Lexer
         $this->index++;
         if ($this->index >= $this->inputLen)
         {
+            $this->isEnd = true;
             return false;
         }
 
@@ -52,6 +55,18 @@ class Lexer
                 break;
             case '^':
                 $this->currentToken = self::TOKEN_CARET;
+                break;
+            case '*':
+                $this->currentToken = self::TOKEN_STAR;
+                break;
+            case '+':
+                $this->currentToken = self::TOKEN_PLUS;
+                break;
+            case '?':
+                $this->currentToken = self::TOKEN_OPTIONAL;
+                break;
+            case '|':
+                $this->currentToken = self::TOKEN_OR;
                 break;
             default:
                 $this->currentToken = self::TOKEN_CHAR;
@@ -73,5 +88,10 @@ class Lexer
     public function getCurrentIndex()
     {
         return $this->index;
+    }
+
+    public function isEnd()
+    {
+        return $this->isEnd;
     }
 }

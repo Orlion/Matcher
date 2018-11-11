@@ -17,6 +17,10 @@ class MachineConstructor
         $this->nodeFactory = new NodeFactory();
     }
 
+    /**
+     * @return Nfa
+     * @throws MatcherException
+     */
     public function build(): Nfa
     {
         $nfa = new Nfa();
@@ -24,39 +28,101 @@ class MachineConstructor
         return $nfa;
     }
 
-    private function expr(Nfa $nfaOut): Nfa
+    /**
+     * @param Nfa $nfaOut
+     * @throws MatcherException
+     */
+    private function expr(Nfa $nfaOut): void
+    {
+        $this->or($nfaOut);
+    }
+
+    /**
+     * 为"|"构造
+     *
+     * @param Nfa $nfa
+     * @return bool
+     * @throws MatcherException
+     */
+    private function or(Nfa $nfaOut): void
+    {
+        $this->subExpr($nfaOut);
+        while (!$this->lexer->isEnd()) {
+            if ($this->lexer->getCurrentToken() != Lexer::TOKEN_OR) {
+                throw new MatcherException('不能解析的token at offset:' . $this->lexer->getCurrentIndex(), 1);
+            }
+
+            $nfaLocal = new Nfa();
+            if (!$this->subExpr($nfaLocal)) {
+
+            }
+
+            $start = $this->nodeFactory->getNode();
+            $start->setEdge1(new Edge(Edge::TYPE_EPSILON, []));
+            $start->setNext1($nfaOut->startNode);
+            $start->setEdge2(new Edge(Edge::TYPE_EPSILON, []));
+            $start->setNext2($nfaLocal->startNode);
+
+            $end = $this->nodeFactory->getNode();
+            $nfaOut->endNode->setEdge1(new Edge(Edge::TYPE_EPSILON, []));
+            $nfaOut->endNode->setNext1($end);
+            $nfaLocal->endNode->setEdge1(new Edge(Edge::TYPE_EPSILON, []));
+            $nfaLocal->endNode->setNext1($end);
+
+            $nfaOut->startNode = $start;
+            $nfaOut->endNode = $end;
+        }
+    }
+
+    /**
+     * subExpr -> factor*
+     *
+     * @param Nfa $nfaOut
+     * @return Nfa
+     * @throws MatcherException
+     */
+    private function subExpr(Nfa $nfaOut): bool
     {
         if ($this->lexer->advance()) {
-            $this->char($nfaOut);
-            while ($this->lexer->advance())
+            if (!$this->factor($nfaOut)) {
+                return false;
+            }
+            while (!$this->lexer->isEnd())
             {
                 $nfaLocal = new Nfa();
-                $this->factor($nfaLocal);
+                if (!$this->factor($nfaLocal)) {
+                    break;
+                }
 
                 $nfaOut->endNode->setNext1($nfaLocal->startNode);
                 $nfaOut->endNode->setEdge1(new Edge(Edge::TYPE_EPSILON, []));
 
                 $nfaOut->endNode = $nfaLocal->endNode;
             }
-        }
 
-        return $nfaOut;
-    }
-
-    private function or(Nfa $nfa): bool
-    {
-
-    }
-
-    private function factor(Nfa $nfa): bool
-    {
-        if (!$this->starClosure($nfa)) {
-            if (!$this->plusClosure($nfa)) {
-                return $this->optionClosure($nfa);
-            }
+            return true;
         }
 
         return false;
+    }
+
+    /**
+     * factor -> term | term* | term+ | term?
+     *
+     * @param Nfa $nfa
+     * @return bool
+     * @throws MatcherException
+     */
+    private function factor(Nfa $nfa): bool
+    {
+        $handle = $this->term($nfa);
+        if (!$this->starClosure($nfa)) {
+            if (!$this->plusClosure($nfa)) {
+                $this->optionClosure($nfa);
+            }
+        }
+
+        return $handle;
     }
 
     /**
@@ -67,7 +133,6 @@ class MachineConstructor
      */
     private function starClosure(Nfa $nfa): bool
     {
-        $this->term($nfa);
         if ($this->lexer->getCurrentToken() != Lexer::TOKEN_STAR) {
             return false;
         }
@@ -90,6 +155,8 @@ class MachineConstructor
         $nfa->startNode = $start;
         $nfa->endNode = $end;
 
+        $this->lexer->advance();
+
         return true;
     }
 
@@ -101,8 +168,7 @@ class MachineConstructor
      */
     private function plusClosure(Nfa $nfa): bool
     {
-        $this->term($nfa);
-        if ($this->lexer->getCurrentToken() != Lexer::TOKEN_STAR) {
+        if ($this->lexer->getCurrentToken() != Lexer::TOKEN_PLUS) {
             return false;
         }
 
@@ -121,6 +187,8 @@ class MachineConstructor
         $nfa->startNode = $start;
         $nfa->endNode = $end;
 
+        $this->lexer->advance();
+
         return true;
     }
 
@@ -132,8 +200,7 @@ class MachineConstructor
      */
     private function optionClosure(Nfa $nfa): bool
     {
-        $this->term($nfa);
-        if ($this->lexer->getCurrentToken() != Lexer::TOKEN_STAR) {
+        if ($this->lexer->getCurrentToken() != Lexer::TOKEN_OPTIONAL) {
             return false;
         }
 
@@ -150,6 +217,8 @@ class MachineConstructor
         $nfa->startNode = $start;
         $nfa->endNode = $end;
 
+        $this->lexer->advance();
+
         return true;
     }
 
@@ -159,16 +228,19 @@ class MachineConstructor
      *
      * @param Nfa $nfa
      * @return Nfa
+     * @throws MatcherException
      */
     private function term(Nfa $nfa): bool
     {
-        if (false === $this->char($nfa)) {
-            if (false === $this->dot($nfa)) {
-                return $this->charSet($nfa);
+        $handle = $this->char($nfa);
+        if (!$handle) {
+            $handle = $this->dot($nfa);
+            if (!$handle) {
+                $handle = $this->charSet($nfa);
             }
         }
 
-        return false;
+        return $handle;
     }
 
     /**
@@ -189,6 +261,8 @@ class MachineConstructor
         $nfa->endNode = $node;
 
         $nfa->startNode->setNext1($node);
+
+        $this->lexer->advance();
 
         return true;
     }
@@ -212,6 +286,8 @@ class MachineConstructor
 
         $nfa->startNode->setNext1($node);
 
+        $this->lexer->advance();
+
         return true;
     }
 
@@ -220,6 +296,7 @@ class MachineConstructor
      *
      * @param Nfa $nfa
      * @return bool
+     * @throws MatcherException
      */
     private function charSet(Nfa $nfa): bool
     {
@@ -242,7 +319,7 @@ class MachineConstructor
             $charSet[] = $this->lexer->getCurrentLexeme();
             if (!$this->lexer->advance()) {
                 // [未闭合就结束则正则表达式不完整，抛出异常警告
-                throw new MatcherException('正则表达式字符集未正确闭合 at offset' . $this->lexer->getCurrentIndex(), 1);
+                throw new MatcherException('正则表达式字符集未正确闭合 at offset:' . $this->lexer->getCurrentIndex(), 1);
             }
         }
 
@@ -253,6 +330,8 @@ class MachineConstructor
         $nfa->endNode = $node;
 
         $nfa->startNode->setNext1($node);
+
+        $this->lexer->advance();
 
         return true;
     }

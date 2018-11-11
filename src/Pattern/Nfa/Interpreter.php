@@ -23,6 +23,7 @@ class Interpreter
         $index = 0;
         do {
             $current = $this->move($subject[$index], $nextNodes);
+            $current[] = $this->nfa->startNode;
             $nextNodes = $this->closure($current);
             if (in_array($this->nfa->endNode, $nextNodes)) {
                 return true;
